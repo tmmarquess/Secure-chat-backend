@@ -7,6 +7,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id       String  @id @default(uuid())
+  name     String?
+  email    String  @unique
+  password String
+  pic      String
+}
+
 model pubkeys {
   user_id String @id @db.VarChar(255)
   pubkey  String @db.VarChar(255)

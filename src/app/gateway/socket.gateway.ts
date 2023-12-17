@@ -8,8 +8,8 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { RabbitClientService } from 'src/rabbit-client/rabbit-client.service';
-import { MessageTemplate } from './message.entity';
+import { RabbitClientService } from 'src/app/rabbit-client/rabbit-client.service';
+import { MessageTemplate } from './dto/message.dto';
 
 @WebSocketGateway({})
 export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
