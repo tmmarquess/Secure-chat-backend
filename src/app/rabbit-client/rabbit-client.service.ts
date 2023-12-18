@@ -5,14 +5,10 @@ import { ClientProxy } from '@nestjs/microservices';
 export class RabbitClientService {
   constructor(@Inject('CHAT_SERVICE') private client: ClientProxy) {}
 
-  async sendMessage(userId: string, message: string) {
+  async sendMessage(userId: string, message: any) {
     try {
-      this.client.emit(userId, {
-        id: `${userId}-${Math.random() * 100}}`,
-        data: {
-          message: message,
-        },
-      });
+      console.log(`${userId} - ${message}`);
+      this.client.emit(userId, message);
 
       return {
         message: 'message sent',

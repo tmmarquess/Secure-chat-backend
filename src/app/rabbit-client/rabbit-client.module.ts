@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ClientsModule, Transport } from '@nestjs/microservices';
 import { RabbitClientService } from './rabbit-client.service';
+import { RabbitMQModule } from '@golevelup/nestjs-rabbitmq';
 
 @Module({
   imports: [
@@ -16,6 +17,10 @@ import { RabbitClientService } from './rabbit-client.service';
         },
       },
     ]),
+    RabbitMQModule.forRoot(RabbitMQModule, {
+      exchanges: [],
+      uri: 'amqp://localhost:5672',
+    }),
   ],
   providers: [RabbitClientService],
   exports: [RabbitClientService],

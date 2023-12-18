@@ -9,9 +9,8 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { RabbitClientService } from 'src/app/rabbit-client/rabbit-client.service';
-import { MessageTemplate } from './dto/message.dto';
 
-@WebSocketGateway({})
+@WebSocketGateway({ cors: true })
 export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(private rabbitClientService: RabbitClientService) {}
 
@@ -26,12 +25,8 @@ export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('newMessage')
-  onNewMessage(
-    @MessageBody() data: MessageTemplate,
-    @ConnectedSocket() client: Socket,
-  ) {
-    console.log(data);
-    client.emit('onMessage', 'Message received');
-    this.rabbitClientService.sendMessage(data.userId, data.message);
+  onNewMessage(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
+    // client.emit('onMessage', 'Message received');
+    this.rabbitClientService.sendMessage(data.receiver, data);
   }
 }

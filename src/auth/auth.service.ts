@@ -31,7 +31,7 @@ export class AuthService {
     return {
       success: true,
       statusCode: 200,
-      _id: user.id,
+      id: user.id,
       name: user.name,
       email: user.email,
       pic: user.pic,
