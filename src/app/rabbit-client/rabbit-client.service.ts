@@ -7,7 +7,7 @@ export class RabbitClientService {
 
   async sendMessage(userId: string, message: any) {
     try {
-      console.log(`${userId} - ${message}`);
+      console.log(`${userId} - ${JSON.stringify(message)}`);
       this.client.emit(userId, message);
 
       return {

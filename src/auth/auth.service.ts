@@ -29,14 +29,10 @@ export class AuthService {
     };
 
     return {
-      success: true,
-      statusCode: 200,
       id: user.id,
       name: user.name,
       email: user.email,
-      pic: user.pic,
       token: this.jwtService.sign(payload),
-      message: 'Authenticated Successfully',
     };
   }
 }

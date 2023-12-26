@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, UnauthorizedException } from '@nestjs/common';
 import { AuthenticateUserDto } from './dto/authenticate-user.dto';
 import { AuthService } from './auth.service';
 
@@ -11,11 +11,7 @@ export class AuthController {
     try {
       return await this.authService.login(userDto.email, userDto.password);
     } catch (e) {
-      return {
-        success: false,
-        statusCode: 400,
-        message: 'Invalid Email or Password',
-      };
+      throw new UnauthorizedException('Email or Password do not match');
     }
   }
 }

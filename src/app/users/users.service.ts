@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaClientService } from '../prisma-client/prisma-client.service';
 import { hashSync } from 'bcryptjs';
 import { Prisma } from '@prisma/client';
@@ -21,7 +21,11 @@ export class UsersService {
 
   async createUser(user: Prisma.UserCreateInput) {
     user.password = hashSync(user.password, 10);
-    return this.prisma.user.create({ data: user });
+    try {
+      return await this.prisma.user.create({ data: user });
+    } catch (error) {
+      throw new ForbiddenException('Email already exists');
+    }
   }
 
   async queryUsers(userName: string, currentUserToken: string) {
@@ -31,7 +35,7 @@ export class UsersService {
 
     return this.prisma.user.findMany({
       where: { name: { contains: userName }, id: { not: jwtPayload.sub } },
-      select: { email: true, name: true, pic: true, id: true },
+      select: { email: true, name: true, id: true },
     });
   }
 }

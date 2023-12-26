@@ -18,16 +18,7 @@ export class UsersController {
 
   @Post()
   async createNewUser(@Body() user: Prisma.UserCreateInput) {
-    const newUser = await this.usersService.createUser(user);
-    return {
-      success: true,
-      statusCode: 200,
-      _id: newUser.id,
-      name: newUser.name,
-      email: newUser.email,
-      pic: newUser.pic,
-      message: 'User created Successfully, now login',
-    };
+    return this.usersService.createUser(user);
   }
 
   @UseGuards(AuthGuard)

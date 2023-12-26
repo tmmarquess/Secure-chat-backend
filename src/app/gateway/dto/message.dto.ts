@@ -1,5 +1,7 @@
-export class MessageTemplate {
-  userId: string;
+export class MessageDTO {
+  senderEmail: string;
 
   message: string;
+
+  receiverId: string;
 }
