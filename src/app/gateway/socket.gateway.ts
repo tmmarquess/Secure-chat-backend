@@ -8,14 +8,11 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { RabbitClientService } from 'src/app/rabbit-client/rabbit-client.service';
 import { MessageDTO } from './dto/message.dto';
 import { JoinChatDTO } from './dto/join-payload.dto';
 
 @WebSocketGateway({ cors: true })
 export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
-  constructor(private rabbitClientService: RabbitClientService) {}
-
   @WebSocketServer()
   server: Server;
 
@@ -40,7 +37,6 @@ export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     console.log(`${client.id} setup > ${data.email}}`);
     client.join(data.email);
     client.emit('connected');
-    // client.join(data);
   }
 
   @SubscribeMessage('typing')
@@ -53,12 +49,6 @@ export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
   stopTyping(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
     console.log(`${client.id} not typing in ${data}`);
     this.server.in(data).emit('stop typing');
-  }
-
-  @SubscribeMessage('testConnection')
-  test(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-    console.log(`${client.id} joined room ${data}`);
-    client.join(data);
   }
 
   @SubscribeMessage('emitRoom')
