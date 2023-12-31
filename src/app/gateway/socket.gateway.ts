@@ -10,9 +10,12 @@ import {
 import { Server, Socket } from 'socket.io';
 import { MessageDTO } from './dto/message.dto';
 import { JoinChatDTO } from './dto/join-payload.dto';
+import { UsersService } from '../users/users.service';
 
 @WebSocketGateway({ cors: true })
 export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
+  constructor(private readonly usersService: UsersService) {}
+
   @WebSocketServer()
   server: Server;
 
@@ -33,10 +36,21 @@ export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('setup')
-  setuUser(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
+  async setuUser(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
     console.log(`${client.id} setup > ${data.email}}`);
+
     client.join(data.email);
     client.emit('connected');
+  }
+
+  @SubscribeMessage('sendPubKey')
+  async getPubKey(
+    @MessageBody() email: string,
+    @ConnectedSocket() client: Socket,
+  ) {
+    console.log(`${client.id} asked for ${email} pubkey`);
+    const pubkey = await this.usersService.getPubKey(email);
+    client.emit('getPubKey', pubkey.pubkey);
   }
 
   @SubscribeMessage('typing')
