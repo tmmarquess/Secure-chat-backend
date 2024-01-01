@@ -22,9 +22,19 @@ export class UsersController {
   }
 
   @UseGuards(AuthGuard)
-  @Get(':id')
-  async getUser(@Param('id') userId: string) {
-    return this.usersService.findOneById(userId);
+  @Get('/get/:email')
+  async getUser(@Param('email') userEmail: string) {
+    const userData = await this.usersService.findOneByEmail(userEmail);
+
+    return { name: userData.name, id: userData.email };
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('groups/get/:id')
+  async getGroupName(@Param('id') groupId: string) {
+    const groupData = await this.usersService.findGroupById(groupId);
+
+    return { name: groupData.group_name, id: groupData.id };
   }
 
   @UseGuards(AuthGuard)
@@ -35,5 +45,16 @@ export class UsersController {
       return [];
     }
     return this.usersService.queryUsers(searchName, currentUserToken);
+  }
+
+  @UseGuards(AuthGuard)
+  @Get('emails')
+  async getAllUsersEmails(@Req() request: Request) {
+    const currentUserToken = request.headers.authorization.split(' ')[1];
+    return (await this.usersService.getAllEmails(currentUserToken)).map(
+      (user) => {
+        return user.email;
+      },
+    );
   }
 }

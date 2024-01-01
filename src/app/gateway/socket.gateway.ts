@@ -9,7 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { MessageDTO } from './dto/message.dto';
-import { JoinChatDTO } from './dto/join-payload.dto';
+import { CreateGroupDTO } from './dto/join-payload.dto';
 import { UsersService } from '../users/users.service';
 
 @WebSocketGateway({ cors: true })
@@ -26,13 +26,31 @@ export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     console.log(`disconnected to ${client.id}`);
   }
 
-  @SubscribeMessage('join chat')
-  joinChat(
-    @MessageBody() data: JoinChatDTO,
+  @SubscribeMessage('createGroup')
+  async joinChat(
+    @MessageBody() data: CreateGroupDTO,
     @ConnectedSocket() client: Socket,
   ) {
-    console.log(`${client.id} join chat > ${data.chatId}`);
-    client.join(data.chatId);
+    const createdGroup = await this.usersService.createGroup(
+      data.groupName,
+      data.creatorEmail,
+      data.selectedEmails,
+    );
+    client.emit('groupCreated', createdGroup);
+    for (const index in data.selectedEmails) {
+      this.server
+        .to(data.selectedEmails[index])
+        .emit('connected', [createdGroup]);
+    }
+  }
+
+  @SubscribeMessage('joinRoom')
+  async joinGroup(
+    @MessageBody() data: string,
+    @ConnectedSocket() client: Socket,
+  ) {
+    console.log(`${client.id} setup > ${data}}`);
+    client.join(data);
   }
 
   @SubscribeMessage('setup')
@@ -40,16 +58,22 @@ export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     console.log(`${client.id} setup > ${data.email}}`);
 
     client.join(data.email);
-    client.emit('connected');
+    const userGroups = await this.usersService.getUserGroups(data.email);
+    client.emit(
+      'connected',
+      userGroups.map((groupInfo) => {
+        return groupInfo.group;
+      }),
+    );
   }
 
   @SubscribeMessage('sendPubKey')
   async getPubKey(
-    @MessageBody() email: string,
+    @MessageBody() id: string,
     @ConnectedSocket() client: Socket,
   ) {
-    console.log(`${client.id} asked for ${email} pubkey`);
-    const pubkey = await this.usersService.getPubKey(email);
+    console.log(`${client.id} asked for ${id} pubkey`);
+    const pubkey = await this.usersService.getPubKey(id);
     client.emit('getPubKey', pubkey.pubkey);
   }
 

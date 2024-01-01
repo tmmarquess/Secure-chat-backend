@@ -40,16 +40,30 @@ export class UsersService {
     });
   }
 
-  // private sliceKeys(pubkey: string, privKey: string) {
-  //   return [
-  //     pubkey
-  //       .replace('-----BEGIN PUBLIC KEY-----\n', '')
-  //       .replace('-----END PUBLIC KEY-----\n', ''),
-  //     privKey
-  //       .replace('-----BEGIN PRIVATE KEY-----\n', '')
-  //       .replace('-----END PRIVATE KEY-----\n', ''),
-  //   ];
-  // }
+  async getAllEmails(currentUserToken: string) {
+    const jwtPayload = await this.jwtService.verifyAsync(currentUserToken, {
+      secret: process.env.JWT_SECRET_KEY,
+    });
+
+    return this.prisma.user.findMany({
+      where: { id: { not: jwtPayload.sub } },
+      select: { email: true },
+    });
+  }
+
+  private generateKeys() {
+    return generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+      publicKeyEncoding: {
+        type: 'spki',
+        format: 'pem',
+      },
+      privateKeyEncoding: {
+        type: 'pkcs8',
+        format: 'pem',
+      },
+    });
+  }
 
   async generateKeyPair(userEmail: string) {
     const userData = await this.findOneByEmail(userEmail);
@@ -59,17 +73,7 @@ export class UsersService {
     });
 
     if (currentKey === null) {
-      const { publicKey, privateKey } = generateKeyPairSync('rsa', {
-        modulusLength: 2048,
-        publicKeyEncoding: {
-          type: 'spki',
-          format: 'pem',
-        },
-        privateKeyEncoding: {
-          type: 'pkcs8',
-          format: 'pem',
-        },
-      });
+      const { publicKey, privateKey } = this.generateKeys();
 
       const newKeys = await this.prisma.keyPairs.create({
         data: {
@@ -91,18 +95,69 @@ export class UsersService {
     }
   }
 
-  async getPubKey(userEmail: string) {
-    const userData = await this.findOneByEmail(userEmail);
+  async getPubKey(id: string) {
+    if (id.includes('@')) {
+      const userData = await this.findOneByEmail(id);
 
-    const pubkey = await this.prisma.keyPairs.findUnique({
-      where: { user_id: userData.id },
-      select: { pubkey: true },
+      const pubkey = await this.prisma.keyPairs.findUnique({
+        where: { user_id: userData.id },
+        select: { pubkey: true },
+      });
+
+      if (pubkey == null) {
+        const newKeys = await this.generateKeyPair(id);
+        return { pubkey: newKeys.publicKey };
+      }
+      return pubkey;
+    } else {
+      return await this.prisma.groups.findUnique({
+        where: { id: id },
+        select: { pubkey: true },
+      });
+    }
+  }
+
+  async createGroup(
+    groupName: string,
+    groupCreator: string,
+    groupUsers: string[],
+  ) {
+    groupUsers.push(groupCreator);
+    const { publicKey, privateKey } = this.generateKeys();
+
+    const createdGroup = await this.prisma.groups.create({
+      data: {
+        group_name: groupName,
+        pubkey: publicKey,
+        privKey: privateKey,
+      },
     });
 
-    if (pubkey == null) {
-      const newKeys = await this.generateKeyPair(userEmail);
-      return { pubkey: newKeys.publicKey };
+    const usersData = [];
+
+    for (const index in groupUsers) {
+      usersData.push({
+        group_id: createdGroup.id,
+        user_id: (await this.findOneByEmail(groupUsers[index])).id,
+      });
     }
-    return pubkey;
+    await this.prisma.groupUsers.createMany({ data: usersData });
+
+    return createdGroup;
+  }
+
+  async getUserGroups(userEmail: string) {
+    const userData = await this.findOneByEmail(userEmail);
+    return this.prisma.groupUsers.findMany({
+      where: { user_id: userData.id },
+      include: { group: true },
+    });
+  }
+
+  async findGroupById(groupId: string) {
+    return this.prisma.groups.findUnique({
+      where: { id: groupId },
+      select: { group_name: true, id: true },
+    });
   }
 }

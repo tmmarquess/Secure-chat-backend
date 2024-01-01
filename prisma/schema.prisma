@@ -8,34 +8,35 @@ datasource db {
 }
 
 model User {
-  id         String         @id @default(uuid())
+  id         String       @id @default(uuid())
   name       String?
-  email      String         @unique
+  email      String       @unique
   password   String
-  keyPairs   keyPairs?
   groupUsers GroupUsers[]
+  keyPairs   keyPairs?
 }
 
 model keyPairs {
-  user    User   @relation(fields: [user_id], references: [id])
   user_id String @id @unique
   pubkey  String @db.LongText
   privKey String @db.LongText
+  user    User   @relation(fields: [user_id], references: [id])
 }
 
 model Groups {
   id         String       @id @default(uuid())
   group_name String       @db.VarChar(255)
-  GroupUsers GroupUsers[]
-  pubkey     String       @db.LongText
   privKey    String       @db.LongText
+  pubkey     String       @db.LongText
+  GroupUsers GroupUsers[]
 }
 
 model GroupUsers {
-  group    Groups @relation(fields: [group_id], references: [id])
   group_id String
-  user     User   @relation(fields: [user_id], references: [id])
   user_id  String
+  group    Groups @relation(fields: [group_id], references: [id])
+  user     User   @relation(fields: [user_id], references: [id])
 
   @@id([group_id, user_id])
+  @@index([user_id], map: "GroupUsers_user_id_fkey")
 }
