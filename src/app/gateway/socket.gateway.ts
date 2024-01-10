@@ -19,11 +19,16 @@ export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
+  connectedUsers: { socket: Socket; email: string }[] = [];
+
   handleConnection(client: Socket) {
     console.log(`Connected to ${client.id}`);
   }
   handleDisconnect(client: Socket) {
     console.log(`disconnected to ${client.id}`);
+    this.connectedUsers = this.connectedUsers.filter((user) => {
+      return user.socket.id !== client.id;
+    });
   }
 
   @SubscribeMessage('createGroup')
@@ -49,13 +54,14 @@ export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: string,
     @ConnectedSocket() client: Socket,
   ) {
-    console.log(`${client.id} setup > ${data}}`);
+    console.log(`${client.id} joinRoom > ${data}`);
     client.join(data);
   }
 
   @SubscribeMessage('setup')
-  async setuUser(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-    console.log(`${client.id} setup > ${data.email}}`);
+  async setupUser(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
+    console.log(`${client.id} setup > ${data.email}`);
+    this.connectedUsers.push({ socket: client, email: data.email });
 
     client.join(data.email);
     const userGroups = await this.usersService.getUserGroups(data.email);
@@ -77,21 +83,35 @@ export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.emit('getPubKey', pubkey.pubkey);
   }
 
-  @SubscribeMessage('typing')
-  setTyping(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-    console.log(`${client.id} typing in ${data}`);
-    this.server.in(data).emit('typing');
+  @SubscribeMessage('isOnline')
+  async isOnline(
+    @MessageBody() email: string,
+    @ConnectedSocket() client: Socket,
+  ) {
+    this.connectedUsers.forEach((user) => {
+      if (user.email === email) {
+        client.emit('isOnline', email);
+      }
+    });
   }
 
-  @SubscribeMessage('stop typing')
-  stopTyping(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-    console.log(`${client.id} not typing in ${data}`);
-    this.server.in(data).emit('stop typing');
-  }
+  // @SubscribeMessage('typing')
+  // setTyping(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
+  //   console.log(`${client.id} typing in ${data}`);
+  //   this.server.in(data).emit('typing');
+  // }
+
+  // @SubscribeMessage('stop typing')
+  // stopTyping(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
+  //   console.log(`${client.id} not typing in ${data}`);
+  //   this.server.in(data).emit('stop typing');
+  // }
 
   @SubscribeMessage('emitRoom')
   emitForRoom(@MessageBody() data: MessageDTO) {
-    console.log(`sending message to room ${data.receiverId}`);
+    console.log(
+      `${data.senderEmail} sending message to room ${data.receiverId} ==> \n ${data.message}`,
+    );
     this.server.to(data.receiverId).emit('emitRoom', data);
   }
 }
