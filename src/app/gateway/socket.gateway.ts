@@ -71,6 +71,9 @@ export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
         return groupInfo.group;
       }),
     );
+    this.server
+      .to(`${data.email}-online`)
+      .emit('isOnline', { email: data.email, online: true });
   }
 
   @SubscribeMessage('sendPubKey')
@@ -83,14 +86,22 @@ export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.emit('getPubKey', pubkey.pubkey);
   }
 
+  @SubscribeMessage('logout')
+  async logOutUser(@MessageBody() email: string) {
+    this.server
+      .to(`${email}-online`)
+      .emit('isOnline', { email: email, online: false });
+  }
+
   @SubscribeMessage('isOnline')
   async isOnline(
     @MessageBody() email: string,
     @ConnectedSocket() client: Socket,
   ) {
+    client.join(`${email}-online`);
     this.connectedUsers.forEach((user) => {
       if (user.email === email) {
-        client.emit('isOnline', email);
+        client.emit('isOnline', { email: email, online: true });
       }
     });
   }
