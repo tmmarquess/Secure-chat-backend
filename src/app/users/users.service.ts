@@ -3,7 +3,6 @@ import { PrismaClientService } from '../prisma-client/prisma-client.service';
 import { hashSync } from 'bcryptjs';
 import { Prisma } from '@prisma/client';
 import { JwtService } from '@nestjs/jwt';
-import { generateKeyPairSync } from 'crypto';
 
 @Injectable()
 export class UsersService {
@@ -51,68 +50,43 @@ export class UsersService {
     });
   }
 
-  private generateKeys() {
-    return generateKeyPairSync('rsa', {
-      modulusLength: 2048,
-      publicKeyEncoding: {
-        type: 'spki',
-        format: 'pem',
-      },
-      privateKeyEncoding: {
-        type: 'pkcs8',
-        format: 'pem',
-      },
-    });
-  }
+  // private generateKeys() {
+  //   return generateKeyPairSync('rsa', {
+  //     modulusLength: 2048,
+  //     publicKeyEncoding: {
+  //       type: 'spki',
+  //       format: 'pem',
+  //     },
+  //     privateKeyEncoding: {
+  //       type: 'pkcs8',
+  //       format: 'pem',
+  //     },
+  //   });
+  // }
 
-  async generateKeyPair(userEmail: string) {
-    const userData = await this.findOneByEmail(userEmail);
-
-    const currentKey = await this.prisma.keyPairs.findUnique({
-      where: { user_id: userData.id },
-    });
-
-    if (currentKey === null) {
-      const { publicKey, privateKey } = this.generateKeys();
-
-      const newKeys = await this.prisma.keyPairs.create({
-        data: {
-          user_id: userData.id,
-          pubkey: publicKey,
-          privKey: privateKey,
-        },
+  async savePubKey(pubKey: string, userEmail: string) {
+    try {
+      await this.prisma.user.update({
+        where: { email: userEmail },
+        data: { pubkey: pubKey },
       });
-
-      return {
-        publicKey: await newKeys.pubkey,
-        privateKey: await newKeys.privKey,
-      };
-    } else {
-      return {
-        publicKey: await currentKey.pubkey,
-        privateKey: await currentKey.privKey,
-      };
+    } catch (error) {
+      console.log(error);
     }
   }
 
   async getPubKey(id: string) {
     if (id.includes('@')) {
-      const userData = await this.findOneByEmail(id);
-
-      const pubkey = await this.prisma.keyPairs.findUnique({
-        where: { user_id: userData.id },
+      const data = await this.prisma.user.findUnique({
+        where: { email: id },
         select: { pubkey: true },
       });
 
-      if (pubkey == null) {
-        const newKeys = await this.generateKeyPair(id);
-        return { pubkey: newKeys.publicKey };
-      }
-      return pubkey;
+      return data.pubkey;
     } else {
       return await this.prisma.groups.findUnique({
         where: { id: id },
-        select: { pubkey: true },
+        select: { simetricKey: true },
       });
     }
   }
@@ -121,15 +95,14 @@ export class UsersService {
     groupName: string,
     groupCreator: string,
     groupUsers: string[],
+    groupKey: string,
   ) {
     groupUsers.push(groupCreator);
-    const { publicKey, privateKey } = this.generateKeys();
 
     const createdGroup = await this.prisma.groups.create({
       data: {
         group_name: groupName,
-        pubkey: publicKey,
-        privKey: privateKey,
+        simetricKey: groupKey,
       },
     });
 

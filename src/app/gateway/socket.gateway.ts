@@ -11,6 +11,7 @@ import { Server, Socket } from 'socket.io';
 import { MessageDTO } from './dto/message.dto';
 import { CreateGroupDTO } from './dto/join-payload.dto';
 import { UsersService } from '../users/users.service';
+import { SetupDTO } from './dto/setup.dto';
 
 @WebSocketGateway({ cors: true })
 export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -27,6 +28,11 @@ export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
   handleDisconnect(client: Socket) {
     console.log(`disconnected to ${client.id}`);
     this.connectedUsers = this.connectedUsers.filter((user) => {
+      if (user.socket.id === client.id) {
+        this.server
+          .to(`${user.email}-online`)
+          .emit('isOnline', { email: user.email, online: false });
+      }
       return user.socket.id !== client.id;
     });
   }
@@ -40,6 +46,7 @@ export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
       data.groupName,
       data.creatorEmail,
       data.selectedEmails,
+      data.groupKey,
     );
     client.emit('groupCreated', createdGroup);
     for (const index in data.selectedEmails) {
@@ -59,32 +66,40 @@ export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('setup')
-  async setupUser(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-    console.log(`${client.id} setup > ${data.email}`);
-    this.connectedUsers.push({ socket: client, email: data.email });
+  async setupUser(
+    @MessageBody() data: SetupDTO,
+    @ConnectedSocket() client: Socket,
+  ) {
+    console.log(`${client.id} setup > ${data.userData.email}`);
+    this.connectedUsers.push({ socket: client, email: data.userData.email });
+    this.usersService.savePubKey(data.publicKey, data.userData.email);
 
-    client.join(data.email);
-    const userGroups = await this.usersService.getUserGroups(data.email);
+    client.join(data.userData.email);
+    const userGroups = await this.usersService.getUserGroups(
+      data.userData.email,
+    );
     client.emit(
       'connected',
       userGroups.map((groupInfo) => {
         return groupInfo.group;
       }),
     );
-    this.server
-      .to(`${data.email}-online`)
-      .emit('isOnline', { email: data.email, online: true });
+    this.server.to(`${data.userData.email}-online`).emit('isOnline', {
+      email: data.userData.email,
+      online: true,
+      pubkey: data.publicKey,
+    });
   }
 
-  @SubscribeMessage('sendPubKey')
-  async getPubKey(
-    @MessageBody() id: string,
-    @ConnectedSocket() client: Socket,
-  ) {
-    console.log(`${client.id} asked for ${id} pubkey`);
-    const pubkey = await this.usersService.getPubKey(id);
-    client.emit('getPubKey', pubkey.pubkey);
-  }
+  // @SubscribeMessage('sendPubKey')
+  // async getPubKey(
+  //   @MessageBody() id: string,
+  //   @ConnectedSocket() client: Socket,
+  // ) {
+  //   console.log(`${client.id} asked for ${id} pubkey`);
+  //   const pubkey = await this.usersService.getPubKey(id);
+  //   client.emit('getPubKey', pubkey.pubkey);
+  // }
 
   @SubscribeMessage('logout')
   async logOutUser(@MessageBody() email: string) {
@@ -99,24 +114,13 @@ export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
   ) {
     client.join(`${email}-online`);
-    this.connectedUsers.forEach((user) => {
+    this.connectedUsers.forEach(async (user) => {
       if (user.email === email) {
-        client.emit('isOnline', { email: email, online: true });
+        const pubkey = await this.usersService.getPubKey(email);
+        client.emit('isOnline', { email: email, online: true, pubkey });
       }
     });
   }
-
-  // @SubscribeMessage('typing')
-  // setTyping(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-  //   console.log(`${client.id} typing in ${data}`);
-  //   this.server.in(data).emit('typing');
-  // }
-
-  // @SubscribeMessage('stop typing')
-  // stopTyping(@MessageBody() data: any, @ConnectedSocket() client: Socket) {
-  //   console.log(`${client.id} not typing in ${data}`);
-  //   this.server.in(data).emit('stop typing');
-  // }
 
   @SubscribeMessage('emitRoom')
   emitForRoom(@MessageBody() data: MessageDTO) {

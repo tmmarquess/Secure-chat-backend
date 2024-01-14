@@ -12,23 +12,21 @@ model User {
   name       String?
   email      String       @unique
   password   String
+  pubkey     String?      @db.LongText
   groupUsers GroupUsers[]
-  keyPairs   keyPairs?
 }
 
-model keyPairs {
-  user_id String @id @unique
+model ServerKeyPair {
+  id      String @id @default(uuid())
   pubkey  String @db.LongText
   privKey String @db.LongText
-  user    User   @relation(fields: [user_id], references: [id])
 }
 
 model Groups {
-  id         String       @id @default(uuid())
-  group_name String       @db.VarChar(255)
-  privKey    String       @db.LongText
-  pubkey     String       @db.LongText
-  GroupUsers GroupUsers[]
+  id          String       @id @default(uuid())
+  group_name  String       @db.VarChar(255)
+  simetricKey String       @db.LongText
+  GroupUsers  GroupUsers[]
 }
 
 model GroupUsers {

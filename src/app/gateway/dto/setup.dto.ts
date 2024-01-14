@@ -1,5 +1,7 @@
+import { userDTO } from './user.dto';
+
 export class SetupDTO {
-  UserEmail: string;
+  userData: userDTO;
 
   publicKey: string;
 }

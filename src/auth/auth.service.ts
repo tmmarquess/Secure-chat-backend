@@ -23,8 +23,6 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    const keyPair = await this.usersService.generateKeyPair(email);
-
     const payload = {
       sub: user.id,
       email: user.email,
@@ -35,7 +33,6 @@ export class AuthService {
       name: user.name,
       email: user.email,
       token: this.jwtService.sign(payload),
-      privateKey: keyPair.privateKey,
     };
   }
 }
