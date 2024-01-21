@@ -16,17 +16,10 @@ model User {
   groupUsers GroupUsers[]
 }
 
-model ServerKeyPair {
-  id      String @id @default(uuid())
-  pubkey  String @db.LongText
-  privKey String @db.LongText
-}
-
 model Groups {
-  id          String       @id @default(uuid())
-  group_name  String       @db.VarChar(255)
-  simetricKey String       @db.LongText
-  GroupUsers  GroupUsers[]
+  id         String       @id @default(uuid())
+  group_name String       @db.VarChar(255)
+  GroupUsers GroupUsers[]
 }
 
 model GroupUsers {

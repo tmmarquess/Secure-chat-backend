@@ -76,33 +76,24 @@ export class UsersService {
   }
 
   async getPubKey(id: string) {
-    if (id.includes('@')) {
-      const data = await this.prisma.user.findUnique({
-        where: { email: id },
-        select: { pubkey: true },
-      });
+    const data = await this.prisma.user.findUnique({
+      where: { email: id },
+      select: { pubkey: true },
+    });
 
-      return data.pubkey;
-    } else {
-      return await this.prisma.groups.findUnique({
-        where: { id: id },
-        select: { simetricKey: true },
-      });
-    }
+    return data.pubkey;
   }
 
   async createGroup(
     groupName: string,
     groupCreator: string,
     groupUsers: string[],
-    groupKey: string,
   ) {
     groupUsers.push(groupCreator);
 
     const createdGroup = await this.prisma.groups.create({
       data: {
         group_name: groupName,
-        simetricKey: groupKey,
       },
     });
 
@@ -125,6 +116,14 @@ export class UsersService {
       where: { user_id: userData.id },
       include: { group: true },
     });
+  }
+
+  async getGroupUsers(groupId: string) {
+    const users = await this.prisma.groupUsers.findMany({
+      select: { user: { select: { email: true } } },
+      where: { group_id: groupId },
+    });
+    return users;
   }
 
   async findGroupById(groupId: string) {

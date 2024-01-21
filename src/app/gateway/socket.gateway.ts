@@ -12,6 +12,8 @@ import { MessageDTO } from './dto/message.dto';
 import { CreateGroupDTO } from './dto/join-payload.dto';
 import { UsersService } from '../users/users.service';
 import { SetupDTO } from './dto/setup.dto';
+import { GroupKeyRequest } from './dto/groupKeyRequest.dto';
+import { GroupKeyData } from './dto/groupKey.dto';
 
 @WebSocketGateway({ cors: true })
 export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -46,7 +48,6 @@ export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
       data.groupName,
       data.creatorEmail,
       data.selectedEmails,
-      data.groupKey,
     );
     client.emit('groupCreated', createdGroup);
     for (const index in data.selectedEmails) {
@@ -100,6 +101,50 @@ export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
   //   const pubkey = await this.usersService.getPubKey(id);
   //   client.emit('getPubKey', pubkey.pubkey);
   // }
+
+  @SubscribeMessage('requestGroupKey')
+  async requestGroupkey(
+    @MessageBody() data: GroupKeyRequest,
+    @ConnectedSocket() client: Socket,
+  ) {
+    const groupUsers = await this.usersService.getGroupUsers(data.groupId);
+    const onlineUsers = [];
+    groupUsers.forEach((userData) => {
+      const usuarioOnline = this.connectedUsers.find(
+        (user) => user.email === userData.user.email,
+      );
+
+      if (usuarioOnline) {
+        onlineUsers.push(userData.user.email);
+      }
+    });
+
+    console.log(onlineUsers);
+
+    if (onlineUsers.length <= 1) {
+      // emitir pra aquele usuário criar a chave k
+      console.log('APENAS VOCE ONLINE');
+      client.emit('onKeySend', { groupId: data.groupId, key: null });
+    } else {
+      // Solicitar que outro usuário o envie a chave k
+      console.log('mais de um user online');
+      this.server
+        .to(onlineUsers.find((email) => email !== data.requesterEmail))
+        .emit('requestGroupKey', {
+          groupId: data.groupId,
+          requesterEmail: data.requesterEmail,
+          requesterPubKey: data.requesterPubKey,
+        });
+    }
+  }
+
+  @SubscribeMessage('onKeySend')
+  async sendGroupKey(@MessageBody() data: GroupKeyData) {
+    console.log(data);
+    this.server
+      .to(data.userEmail)
+      .emit('onKeySend', { groupId: data.groupId, key: data.key });
+  }
 
   @SubscribeMessage('logout')
   async logOutUser(@MessageBody() email: string) {
