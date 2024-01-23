@@ -75,9 +75,9 @@ export class UsersService {
     }
   }
 
-  async getPubKey(id: string) {
+  async getPubKey(userEmail: string) {
     const data = await this.prisma.user.findUnique({
-      where: { email: id },
+      where: { email: userEmail },
       select: { pubkey: true },
     });
 
@@ -124,6 +124,18 @@ export class UsersService {
       where: { group_id: groupId },
     });
     return users;
+  }
+
+  async deleteUserFromGroup(groupId: string, userEmail: string) {
+    const userData = await this.findOneByEmail(userEmail);
+    console.log(`${groupId} - ${userData.id}`);
+    await this.prisma.groupUsers.delete({
+      where: { group_id_user_id: { group_id: groupId, user_id: userData.id } },
+    });
+
+    if ((await this.getGroupUsers(groupId)).length === 0) {
+      this.prisma.groups.delete({ where: { id: groupId } });
+    }
   }
 
   async findGroupById(groupId: string) {

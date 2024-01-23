@@ -14,6 +14,7 @@ import { UsersService } from '../users/users.service';
 import { SetupDTO } from './dto/setup.dto';
 import { GroupKeyRequest } from './dto/groupKeyRequest.dto';
 import { GroupKeyData } from './dto/groupKey.dto';
+import { leaveGroupPayload } from './dto/leaveGroupPayload.dto';
 
 @WebSocketGateway({ cors: true })
 export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
@@ -51,6 +52,16 @@ export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     );
     client.emit('groupCreated', createdGroup);
     for (const index in data.selectedEmails) {
+      const currentPubKey = await this.usersService.getPubKey(
+        data.selectedEmails[index],
+      );
+
+      client.emit('requestGroupKey', {
+        groupId: createdGroup.id,
+        requesterEmail: data.selectedEmails[index],
+        requesterPubKey: currentPubKey,
+      });
+
       this.server
         .to(data.selectedEmails[index])
         .emit('connected', [createdGroup]);
@@ -119,15 +130,12 @@ export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
     });
 
-    console.log(onlineUsers);
-
     if (onlineUsers.length <= 1) {
       // emitir pra aquele usuário criar a chave k
-      console.log('APENAS VOCE ONLINE');
+      console.log(onlineUsers);
       client.emit('onKeySend', { groupId: data.groupId, key: null });
     } else {
       // Solicitar que outro usuário o envie a chave k
-      console.log('mais de um user online');
       this.server
         .to(onlineUsers.find((email) => email !== data.requesterEmail))
         .emit('requestGroupKey', {
@@ -140,10 +148,19 @@ export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   @SubscribeMessage('onKeySend')
   async sendGroupKey(@MessageBody() data: GroupKeyData) {
-    console.log(data);
+    // console.log(data);
     this.server
       .to(data.userEmail)
       .emit('onKeySend', { groupId: data.groupId, key: data.key });
+  }
+
+  @SubscribeMessage('leaveGroup')
+  async leaveGroup(
+    @MessageBody() data: leaveGroupPayload,
+    @ConnectedSocket() client: Socket,
+  ) {
+    this.usersService.deleteUserFromGroup(data.groupId, data.userEmail);
+    client.leave(data.groupId);
   }
 
   @SubscribeMessage('logout')
