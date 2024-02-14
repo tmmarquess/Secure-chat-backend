@@ -4,4 +4,6 @@ export class MessageDTO {
   message: string;
 
   receiverId: string;
+
+  signature: string;
 }

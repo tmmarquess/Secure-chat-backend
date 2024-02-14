@@ -57,4 +57,15 @@ export class UsersController {
       },
     );
   }
+
+  @UseGuards(AuthGuard)
+  @Get('pubkey/:value')
+  async getUserPubKey(@Param('value') userEmail: string) {
+    try {
+      const pubkey = await this.usersService.getPubKey(userEmail);
+      return pubkey;
+    } catch (error) {
+      return '';
+    }
+  }
 }
