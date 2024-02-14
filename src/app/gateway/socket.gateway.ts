@@ -118,6 +118,7 @@ export class MyGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @MessageBody() data: GroupKeyRequest,
     @ConnectedSocket() client: Socket,
   ) {
+    console.log(`${client.id} requesting key for ${data.groupId}`);
     const groupUsers = await this.usersService.getGroupUsers(data.groupId);
     const onlineUsers = [];
     groupUsers.forEach((userData) => {
