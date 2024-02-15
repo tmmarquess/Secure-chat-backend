@@ -27,7 +27,6 @@ export class UsersController {
     @Body() user: Prisma.UserCreateInput,
     @Req() req: Request,
   ) {
-    this.usersService.createUser(user);
     const token = Math.floor(1000 + Math.random() * 9000).toString();
     console.log(`${req.protocol}://${req.get('Host')}${req.originalUrl}`);
     await this.mailService.sendUserConfirmation(
@@ -35,6 +34,7 @@ export class UsersController {
       token,
       `${req.protocol}://${req.get('Host')}${req.originalUrl}`,
     );
+    this.usersService.createUser(user);
     this.usersToConfirm.push({ email: user.email, token: token });
     return;
   }
