@@ -12,7 +12,9 @@ export class UsersService {
   ) {}
 
   async findOneByEmail(email: string) {
-    return this.prisma.user.findUniqueOrThrow({ where: { email: email } });
+    return this.prisma.user.findUniqueOrThrow({
+      where: { email: email, activated: true },
+    });
   }
 
   async findOneById(id: string) {
@@ -40,7 +42,11 @@ export class UsersService {
     });
 
     return this.prisma.user.findMany({
-      where: { name: { contains: userName }, id: { not: jwtPayload.sub } },
+      where: {
+        name: { contains: userName },
+        id: { not: jwtPayload.sub },
+        activated: true,
+      },
       select: { email: true, name: true, id: true },
     });
   }
@@ -51,7 +57,7 @@ export class UsersService {
     });
 
     return this.prisma.user.findMany({
-      where: { id: { not: jwtPayload.sub } },
+      where: { id: { not: jwtPayload.sub }, activated: true },
       select: { email: true },
     });
   }
