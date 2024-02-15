@@ -21,6 +21,13 @@ export class UsersService {
     return this.prisma.user.findUniqueOrThrow({ where: { id: id } });
   }
 
+  async confirmUser(userEmail: string) {
+    return this.prisma.user.update({
+      data: { activated: true },
+      where: { email: userEmail },
+    });
+  }
+
   async createUser(user: Prisma.UserCreateInput) {
     const regexSenha = new RegExp(
       '^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$ %^&*-]).{8,}$',
@@ -29,6 +36,7 @@ export class UsersService {
       throw new ForbiddenException('A senha não atende aos requisitos mínimos');
     }
     user.password = hashSync(user.password, 10);
+    user.activated = false;
     try {
       return await this.prisma.user.create({ data: user });
     } catch (error) {

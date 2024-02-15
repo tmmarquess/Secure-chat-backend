@@ -11,14 +11,47 @@ import { UsersService } from './users.service';
 import { Prisma } from '@prisma/client';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { Request } from 'express';
+import { MailService } from '../mail/mail.service';
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  usersToConfirm: { email: string; token: string }[] = [];
+
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly mailService: MailService,
+  ) {}
 
   @Post()
-  async createNewUser(@Body() user: Prisma.UserCreateInput) {
-    return this.usersService.createUser(user);
+  async createNewUser(
+    @Body() user: Prisma.UserCreateInput,
+    @Req() req: Request,
+  ) {
+    this.usersService.createUser(user);
+    const token = Math.floor(1000 + Math.random() * 9000).toString();
+    console.log(`${req.protocol}://${req.get('Host')}${req.originalUrl}`);
+    await this.mailService.sendUserConfirmation(
+      user,
+      token,
+      `${req.protocol}://${req.get('Host')}${req.originalUrl}`,
+    );
+    this.usersToConfirm.push({ email: user.email, token: token });
+    return;
+  }
+
+  @Get('/confirm/:token')
+  async confirmUser(@Param('token') token: string) {
+    let userConfirmed = false;
+    this.usersToConfirm.filter((user) => {
+      if (user.token === token) {
+        this.usersService.confirmUser(user.email);
+        userConfirmed = true;
+      }
+      return user.token !== token;
+    });
+    return userConfirmed
+      ? 'Usuário ativado no sistema'
+      : 'Token expirado ou inexistente';
   }
 
   @UseGuards(AuthGuard)
