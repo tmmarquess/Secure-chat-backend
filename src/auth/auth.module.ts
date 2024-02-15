@@ -1,10 +1,16 @@
-import { Module, forwardRef } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  forwardRef,
+} from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { UsersModule } from 'src/app/users/users.module';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule } from '@nestjs/config';
 import { AuthGuard } from './auth.guard';
+import { CustomRateLimitMiddleware } from 'src/middlewares/custom-rate-limit.middleware';
 
 @Module({
   imports: [
@@ -19,4 +25,8 @@ import { AuthGuard } from './auth.guard';
   providers: [AuthService, AuthGuard],
   exports: [AuthGuard],
 })
-export class AuthModule {}
+export class AuthModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(CustomRateLimitMiddleware).forRoutes(AuthController);
+  }
+}
