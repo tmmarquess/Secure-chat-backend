@@ -20,6 +20,12 @@ export class UsersService {
   }
 
   async createUser(user: Prisma.UserCreateInput) {
+    const regexSenha = new RegExp(
+      '^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$ %^&*-]).{8,}$',
+    );
+    if (!regexSenha.test(user.password)) {
+      throw new ForbiddenException('A senha não atende aos requisitos mínimos');
+    }
     user.password = hashSync(user.password, 10);
     try {
       return await this.prisma.user.create({ data: user });
